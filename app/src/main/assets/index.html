@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Мій Агрохолдинг</title>
+<style>
+  :root{
+    --bg:#0f1a10; --panel:#16261a; --panel2:#1d3322; --accent:#5fbf4a; --accent2:#8fe06a;
+    --gold:#e8c547; --text:#eaf5e6; --muted:#8fa892; --danger:#e0574f; --blue:#4aa3d6;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,Roboto,Segoe UI,Arial,sans-serif; overflow-x:hidden;}
+  body{padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);}
+  #app{display:flex; flex-direction:column; height:100vh; height:100dvh;}
+
+  header{background:linear-gradient(180deg,#1c3320,#152618); padding:10px 12px; flex-shrink:0;
+    box-shadow:0 2px 6px rgba(0,0,0,.4); z-index:5;}
+  .top-row{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .title{font-size:15px; font-weight:700; color:var(--accent2);}
+  .tier{font-size:11px; color:var(--muted);}
+  .money{font-size:18px; font-weight:800; color:var(--gold); white-space:nowrap;}
+  .progress-wrap{margin-top:8px; background:#0b150c; border-radius:8px; height:8px; overflow:hidden;}
+  .progress-bar{height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); width:0%; transition:width .3s;}
+  .progress-label{font-size:10px; color:var(--muted); margin-top:3px; display:flex; justify-content:space-between;}
+
+  main{flex:1; overflow-y:auto; padding:10px 10px 90px 10px;}
+  section{margin-bottom:16px;}
+  .sec-title{font-size:13px; font-weight:700; color:var(--accent2); margin:0 0 8px 2px; display:flex; align-items:center; gap:6px;}
+
+  .plots-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:8px;}
+  .plot{background:var(--panel); border:2px solid #24401f; border-radius:10px; padding:6px 4px; text-align:center;
+    cursor:pointer; position:relative; min-height:92px; display:flex; flex-direction:column; align-items:center; justify-content:center; transition:transform .1s;}
+  .plot:active{transform:scale(.95);}
+  .plot.empty{border-style:dashed; color:var(--muted);}
+  .plot.locked{opacity:.45; border-style:dashed;}
+  .plot.greenhouse{background:#173428; border-color:#2b5540;}
+  .plot .emoji{font-size:26px; line-height:1;}
+  .plot .name{font-size:10px; margin-top:3px; color:var(--muted); max-width:76px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .plot .mini-bar{width:88%; height:5px; background:#0b150c; border-radius:4px; margin-top:5px; overflow:hidden;}
+  .plot .mini-fill{height:100%; background:var(--accent2);}
+  .plot .ready-badge{position:absolute; top:-6px; right:-6px; background:var(--gold); color:#2a1e00; font-size:14px;
+    border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,.4);}
+  .plot .lock-icon{font-size:20px;}
+  .plot .buy-price{font-size:10px; color:var(--gold); margin-top:2px;}
+  .plot .gh-icon{position:absolute; top:2px; left:4px; font-size:11px;}
+
+  .shop-tabs{display:flex; gap:6px; margin-bottom:8px; overflow-x:auto; padding-bottom:2px;}
+  .tab{flex-shrink:0; background:var(--panel); border:1px solid #24401f; color:var(--muted); font-size:12px;
+    padding:6px 12px; border-radius:20px; cursor:pointer;}
+  .tab.active{background:var(--accent); color:#0d1a0e; border-color:var(--accent); font-weight:700;}
+
+  .card{background:var(--panel); border:1px solid #24401f; border-radius:12px; padding:10px; display:flex; align-items:center; gap:10px; margin-bottom:8px;}
+  .card .icon{font-size:26px; width:36px; text-align:center; flex-shrink:0;}
+  .card .info{flex:1; min-width:0;}
+  .card .info .name{font-size:13px; font-weight:700;}
+  .card .info .desc{font-size:11px; color:var(--muted); margin-top:1px;}
+  .card .buy-btn{background:var(--accent); color:#0d1a0e; border:none; border-radius:8px; padding:8px 10px;
+    font-size:12px; font-weight:800; white-space:nowrap; flex-shrink:0;}
+  .card .buy-btn:disabled{background:#2c3a2a; color:#5c6b5a;}
+  .card.disabled{opacity:.5;}
+
+  .stats-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .stat-box{background:var(--panel); border-radius:10px; padding:10px; text-align:center;}
+  .stat-box .val{font-size:16px; font-weight:800; color:var(--accent2);}
+  .stat-box .lbl{font-size:10px; color:var(--muted); margin-top:2px;}
+
+  nav{position:fixed; bottom:0; left:0; right:0; background:#132015; border-top:1px solid #244020;
+    display:flex; padding-bottom:env(safe-area-inset-bottom,0px); z-index:10;}
+  nav button{flex:1; background:none; border:none; color:var(--muted); font-size:10px; padding:9px 2px 7px;
+    display:flex; flex-direction:column; align-items:center; gap:2px;}
+  nav button.active{color:var(--accent2);}
+  nav button .ic{font-size:19px;}
+
+  .toast{position:fixed; top:calc(env(safe-area-inset-top,0px) + 8px); left:50%; transform:translateX(-50%);
+    background:#1d3322; border:1px solid var(--accent); color:var(--accent2); padding:8px 16px; border-radius:20px;
+    font-size:12px; font-weight:700; z-index:50; opacity:0; transition:opacity .25s, top .25s; pointer-events:none; white-space:nowrap;}
+  .toast.show{opacity:1; top:calc(env(safe-area-inset-top,0px) + 46px);}
+
+  .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:100; padding:20px;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:var(--panel2); border-radius:16px; padding:20px; max-width:320px; width:100%; text-align:center; border:1px solid var(--accent);}
+  .modal .emoji-big{font-size:44px;}
+  .modal h3{margin:8px 0 4px; color:var(--gold);}
+  .modal p{font-size:13px; color:var(--muted); margin:4px 0 14px;}
+  .modal button{background:var(--accent); border:none; color:#0d1a0e; font-weight:800; padding:10px 20px; border-radius:10px; font-size:13px;}
+
+  .empty-hint{font-size:11px; color:var(--muted); text-align:center; padding:14px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="top-row">
+      <div>
+        <div class="title">🌾 Мій Агрохолдинг</div>
+        <div class="tier" id="tierLabel">Присадибна ділянка</div>
+      </div>
+      <div class="money" id="moneyLabel">0 ₴</div>
+    </div>
+    <div class="progress-wrap"><div class="progress-bar" id="tierProgress"></div></div>
+    <div class="progress-label"><span id="tierCurrent">Рівень 1</span><span id="tierNext">Далі: 5 000 ₴</span></div>
+  </header>
+
+  <main id="mainView"></main>
+
+  <nav>
+    <button class="active" data-view="farm"><span class="ic">🌱</span>Ферма</button>
+    <button data-view="shop"><span class="ic">🛒</span>Магазин</button>
+    <button data-view="build"><span class="ic">🏗️</span>Будівлі</button>
+    <button data-view="workers"><span class="ic">👷</span>Персонал</button>
+    <button data-view="stats"><span class="ic">📊</span>Статистика</button>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="tierModal">
+  <div class="modal">
+    <div class="emoji-big" id="tierModalEmoji">🏆</div>
+    <h3 id="tierModalTitle">Новий рівень!</h3>
+    <p id="tierModalDesc"></p>
+    <button onclick="closeTierModal()">Продовжити</button>
+  </div>
+</div>
+
+<script>
+/* ==================== ДАНІ ГРИ ==================== */
+
+const CROPS = {
+  radish:   {name:"Редиска",    emoji:"🌱", cost:5,    growSec:8,   sell:14,   tier:0, kind:"field"},
+  cucumber: {name:"Огірки",     emoji:"🥒", cost:12,   growSec:16,  sell:34,   tier:0, kind:"field"},
+  tomato:   {name:"Помідори",   emoji:"🍅", cost:22,   growSec:26,  sell:64,   tier:0, kind:"field"},
+  potato:   {name:"Картопля",   emoji:"🥔", cost:16,   growSec:20,  sell:44,   tier:1, kind:"field"},
+  cabbage:  {name:"Капуста",    emoji:"🥬", cost:30,   growSec:34,  sell:88,   tier:1, kind:"field"},
+  sunflower:{name:"Соняшник",   emoji:"🌻", cost:45,   growSec:46,  sell:130,  tier:2, kind:"field"},
+  apple:    {name:"Яблуня",     emoji:"🍎", cost:90,   growSec:60,  sell:260,  tier:2, kind:"orchard"},
+  pear:     {name:"Груша",      emoji:"🍐", cost:120,  growSec:74,  sell:340,  tier:3, kind:"orchard"},
+  grape:    {name:"Виноград",   emoji:"🍇", cost:180,  growSec:90,  sell:520,  tier:3, kind:"vineyard"},
+  gh_strawb:{name:"Полуниця",   emoji:"🍓", cost:70,   growSec:22,  sell:200,  tier:2, kind:"greenhouse"},
+  gh_pepper:{name:"Перець",     emoji:"🫑", cost:110,  growSec:30,  sell:330,  tier:3, kind:"greenhouse"},
+  gh_orchid:{name:"Квіти",      emoji:"🌷", cost:200,  growSec:40,  sell:640,  tier:4, kind:"greenhouse"},
+};
+
+const TIERS = [
+  {name:"Присадибна ділянка",        need:0,        emoji:"🏡"},
+  {name:"Фермерське господарство",   need:5000,      emoji:"🚜"},
+  {name:"Сільгосппідприємство",      need:50000,     emoji:"🏭"},
+  {name:"Агрофірма",                 need:250000,    emoji:"🏢"},
+  {name:"Регіональний агрохолдинг",  need:1000000,   emoji:"🏦"},
+  {name:"Агрохолдинг всеукраїнського рівня", need:5000000, emoji:"👑"},
+];
+
+const PLOT_BASE_COST = 60;
+const PLOT_COST_GROWTH = 1.55;
+const GREENHOUSE_COST_BASE = 800;
+const GREENHOUSE_COST_GROWTH = 1.9;
+
+const WORKER_TYPES = [
+  {id:"harvester", name:"Збирач врожаю", emoji:"👨‍🌾", baseCost:250, costGrowth:2.1,
+   desc:"Автоматично збирає стиглий урожай кожні кілька секунд"},
+  {id:"agronomist", name:"Агроном", emoji:"🧑‍🔬", baseCost:1800, costGrowth:2.3,
+   desc:"Прискорює ріст усіх культур на 10% за кожного"},
+];
+
+const UPGRADES = [
+  {id:"sensor_kit", name:"Кліматичні датчики (ESP32)", emoji:"📡", cost:1500,
+   desc:"Теплиці ростуть на 25% швидше — сенсори температури й вологості тримають мікроклімат стабільним", oneTime:true},
+  {id:"drip_irrigation", name:"Крапельне зрошення", emoji:"💧", cost:3200,
+   desc:"Усі культури дають +20% доходу з продажу", oneTime:true},
+  {id:"tractor", name:"Трактор", emoji:"🚜", cost:6000,
+   desc:"Знижує вартість насіння на всіх ділянках на 25%", oneTime:true},
+  {id:"cold_storage", name:"Холодильний склад", emoji:"❄️", cost:12000,
+   desc:"+30% до ціни продажу всього врожаю (менше втрат)", oneTime:true},
+  {id:"export_license", name:"Експортна ліцензія", emoji:"🚢", cost:40000,
+   desc:"+50% до ціни продажу врожаю з теплиць та саду", oneTime:true},
+];
+
+/* ==================== СТАН ГРИ ==================== */
+
+let state = null;
+
+function freshState(){
+  return {
+    money: 300,
+    totalEarned: 0,
+    tier: 0,
+    plots: [
+      {unlocked:true, type:"field", crop:null, plantedAt:0},
+      {unlocked:true, type:"field", crop:null, plantedAt:0},
+      {unlocked:false, type:"field", crop:null, plantedAt:0},
+      {unlocked:false, type:"field", crop:null, plantedAt:0},
+    ],
+    workers: {harvester:0, agronomist:0},
+    upgrades: {},
+    stats: {harvests:0, sold:0, planted:0},
+    lastTick: Date.now(),
+  };
+}
+
+function save(){
+  try{ localStorage.setItem("agroholding_save", JSON.stringify(state)); }catch(e){}
+}
+function load(){
+  try{
+    const raw = localStorage.getItem("agroholding_save");
+    if(raw){
+      const loaded = JSON.parse(raw);
+      state = Object.assign(freshState(), loaded);
+      // offline progress
+      const elapsed = Math.min((Date.now() - (state.lastTick||Date.now()))/1000, 3600*8);
+      if(elapsed > 2){ simulateOffline(elapsed); }
+    } else {
+      state = freshState();
+    }
+  }catch(e){ state = freshState(); }
+}
+
+function simulateOffline(sec){
+  let grew = 0;
+  state.plots.forEach(p=>{
+    if(p.unlocked && p.crop){
+      p.plantedAt -= sec*1000; // push planted time back = more progress
+      grew++;
+    }
+  });
+  if(grew>0) showToast("⏱️ Поки тебе не було, урожай продовжував рости");
+}
+
+/* ==================== ЛОГІКА ==================== */
+
+function fmt(n){
+  n = Math.floor(n);
+  return n.toLocaleString("uk-UA") + " ₴";
+}
+
+function currentTierIndex(){
+  let idx=0;
+  for(let i=0;i<TIERS.length;i++){ if(state.totalEarned>=TIERS[i].need) idx=i; }
+  return idx;
+}
+
+function growSpeedMultiplier(kind){
+  let mult = 1;
+  mult += state.workers.agronomist * 0.10;
+  if(kind==="greenhouse" && state.upgrades.sensor_kit) mult += 0.25;
+  return mult;
+}
+
+function sellPriceMultiplier(kind){
+  let mult = 1;
+  if(state.upgrades.drip_irrigation) mult += 0.20;
+  if(state.upgrades.cold_storage) mult += 0.30;
+  if(state.upgrades.export_license && (kind==="greenhouse"||kind==="orchard"||kind==="vineyard")) mult += 0.50;
+  return mult;
+}
+
+function seedCostMultiplier(){
+  return state.upgrades.tractor ? 0.75 : 1;
+}
+
+function plotProgress(plot){
+  if(!plot.crop) return 0;
+  const crop = CROPS[plot.crop];
+  const elapsed = (Date.now() - plot.plantedAt)/1000 * growSpeedMultiplier(crop.kind);
+  return Math.min(1, elapsed / crop.growSec);
+}
+
+function plantCrop(plotIndex, cropId){
+  const plot = state.plots[plotIndex];
+  const crop = CROPS[cropId];
+  if(!plot.unlocked || plot.crop) return;
+  if(plot.type === "greenhouse" && crop.kind !== "greenhouse") { showToast("🌡️ У теплиці можна саджати лише тепличні культури"); return; }
+  if(plot.type === "field" && crop.kind === "greenhouse") { showToast("🏗️ Спочатку побудуй теплицю на цій ділянці"); return; }
+  if(plot.type === "field" && (crop.kind==="orchard"||crop.kind==="vineyard") && !plot.orchardReady){
+    // orchard/vineyard crops can be planted on any unlocked field plot in this simplified model
+  }
+  const cost = Math.round(crop.cost * seedCostMultiplier());
+  if(state.money < cost){ showToast("💸 Недостатньо коштів на насіння"); return; }
+  state.money -= cost;
+  plot.crop = cropId;
+  plot.plantedAt = Date.now();
+  state.stats.planted++;
+  save();
+  render();
+}
+
+function harvestPlot(plotIndex, silent){
+  const plot = state.plots[plotIndex];
+  if(!plot.crop) return;
+  if(plotProgress(plot) < 1) return;
+  const crop = CROPS[plot.crop];
+  const price = Math.round(crop.sell * sellPriceMultiplier(crop.kind));
+  state.money += price;
+  state.totalEarned += price;
+  state.stats.harvests++;
+  state.stats.sold += price;
+  plot.crop = null;
+  plot.plantedAt = 0;
+  checkTierUp();
+  if(!silent) showToast(`✅ Зібрано ${crop.name}: +${fmt(price)}`);
+  save();
+  render();
+}
+
+function plotUnlockCost(index){
+  return Math.round(PLOT_BASE_COST * Math.pow(PLOT_COST_GROWTH, index));
+}
+
+function buyPlot(index){
+  const plot = state.plots[index];
+  const cost = plotUnlockCost(index);
+  if(state.money < cost){ showToast("💸 Недостатньо коштів на нову ділянку"); return; }
+  state.money -= cost;
+  plot.unlocked = true;
+  // add a new locked plot slot at the end if this was the last one
+  if(index === state.plots.length-1){
+    state.plots.push({unlocked:false, type:"field", crop:null, plantedAt:0});
+  }
+  save();
+  render();
+}
+
+function greenhouseCount(){
+  return state.plots.filter(p=>p.type==="greenhouse").length;
+}
+function greenhouseCost(){
+  return Math.round(GREENHOUSE_COST_BASE * Math.pow(GREENHOUSE_COST_GROWTH, greenhouseCount()));
+}
+function buildGreenhouse(index){
+  const plot = state.plots[index];
+  if(!plot.unlocked || plot.crop || plot.type==="greenhouse") return;
+  const cost = greenhouseCost();
+  if(state.money < cost){ showToast("💸 Недостатньо коштів на будівництво теплиці"); return; }
+  state.money -= cost;
+  plot.type = "greenhouse";
+  save();
+  render();
+  showToast("🏗️ Теплицю збудовано!");
+}
+
+function workerCost(id){
+  const w = WORKER_TYPES.find(x=>x.id===id);
+  const owned = state.workers[id]||0;
+  return Math.round(w.baseCost * Math.pow(w.costGrowth, owned));
+}
+function hireWorker(id){
+  const cost = workerCost(id);
+  if(state.money < cost){ showToast("💸 Недостатньо коштів на найм"); return; }
+  state.money -= cost;
+  state.workers[id] = (state.workers[id]||0)+1;
+  save();
+  render();
+  showToast("🤝 Найнято нового працівника!");
+}
+
+function buyUpgrade(id){
+  const up = UPGRADES.find(u=>u.id===id);
+  if(state.upgrades[id]) return;
+  if(state.money < up.cost){ showToast("💸 Недостатньо коштів"); return; }
+  state.money -= up.cost;
+  state.upgrades[id] = true;
+  save();
+  render();
+  showToast(`⭐ Придбано: ${up.name}`);
+}
+
+let lastTierIdx = 0;
+function checkTierUp(){
+  const idx = currentTierIndex();
+  if(idx > state.tier){
+    state.tier = idx;
+    openTierModal(TIERS[idx]);
+  }
+}
+
+/* ==================== АВТО-ЗБІР ПРАЦІВНИКАМИ ==================== */
+setInterval(()=>{
+  if(!state) return;
+  if((state.workers.harvester||0) > 0){
+    state.plots.forEach((p, i)=>{
+      if(p.crop && plotProgress(p) >= 1){
+        harvestPlot(i, true);
+      }
+    });
+  }
+}, 2500);
+
+/* ==================== UI ==================== */
+
+let currentView = "farm";
+let shopTab = "field";
+
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.remove("show"), 2200);
+}
+
+function openTierModal(tier){
+  document.getElementById("tierModalEmoji").textContent = tier.emoji;
+  document.getElementById("tierModalTitle").textContent = "Новий рівень!";
+  document.getElementById("tierModalDesc").textContent = `Вітаємо! Тепер твоє господарство — «${tier.name}».`;
+  document.getElementById("tierModal").classList.add("show");
+}
+function closeTierModal(){
+  document.getElementById("tierModal").classList.remove("show");
+}
+
+document.querySelectorAll("nav button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    currentView = btn.dataset.view;
+    render();
+  });
+});
+
+function renderHeader(){
+  document.getElementById("moneyLabel").textContent = fmt(state.money);
+  const idx = currentTierIndex();
+  const tier = TIERS[idx];
+  const next = TIERS[idx+1];
+  document.getElementById("tierLabel").textContent = `${tier.emoji} ${tier.name}`;
+  document.getElementById("tierCurrent").textContent = `Рівень ${idx+1}`;
+  if(next){
+    const pct = Math.min(100, ((state.totalEarned - tier.need) / (next.need - tier.need)) * 100);
+    document.getElementById("tierProgress").style.width = pct+"%";
+    document.getElementById("tierNext").textContent = `Далі: ${fmt(next.need)}`;
+  } else {
+    document.getElementById("tierProgress").style.width = "100%";
+    document.getElementById("tierNext").textContent = "Максимальний рівень!";
+  }
+}
+
+function renderFarm(){
+  let html = `<section><div class="sec-title">🌾 Твоя земля</div><div class="plots-grid">`;
+  state.plots.forEach((plot, i)=>{
+    if(!plot.unlocked){
+      const cost = plotUnlockCost(i);
+      html += `<div class="plot locked" onclick="buyPlot(${i})">
+        <div class="lock-icon">🔒</div><div class="name">Нова ділянка</div>
+        <div class="buy-price">${fmt(cost)}</div></div>`;
+      return;
+    }
+    if(!plot.crop){
+      const label = plot.type==="greenhouse" ? "Теплиця (пусто)" : "Вільна ділянка";
+      html += `<div class="plot empty ${plot.type==='greenhouse'?'greenhouse':''}" onclick="openPlantPicker(${i})">
+        ${plot.type==='greenhouse'?'<div class="gh-icon">🏠</div>':''}
+        <div class="emoji">➕</div><div class="name">${label}</div></div>`;
+      return;
+    }
+    const crop = CROPS[plot.crop];
+    const prog = plotProgress(plot);
+    const ready = prog >= 1;
+    html += `<div class="plot ${plot.type==='greenhouse'?'greenhouse':''}" onclick="${ready?`harvestPlot(${i})`:''}">
+      ${plot.type==='greenhouse'?'<div class="gh-icon">🏠</div>':''}
+      ${ready?'<div class="ready-badge">✓</div>':''}
+      <div class="emoji">${crop.emoji}</div>
+      <div class="name">${crop.name}</div>
+      <div class="mini-bar"><div class="mini-fill" style="width:${Math.round(prog*100)}%"></div></div>
+    </div>`;
+  });
+  html += `</div></section>`;
+  document.getElementById("mainView").innerHTML = html;
+}
+
+let pickerPlotIndex = null;
+function openPlantPicker(i){
+  pickerPlotIndex = i;
+  currentView = "shop";
+  const plot = state.plots[i];
+  shopTab = plot.type === "greenhouse" ? "greenhouse" : "field";
+  document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+  document.querySelector('nav button[data-view="shop"]').classList.add("active");
+  render();
+}
+
+function renderShop(){
+  const idx = currentTierIndex();
+  const kinds = [
+    {id:"field", label:"🌱 Поле"},
+    {id:"orchard", label:"🍎 Сад"},
+    {id:"vineyard", label:"🍇 Виноградник"},
+    {id:"greenhouse", label:"🏠 Теплиця"},
+  ];
+  let html = `<section>`;
+  if(pickerPlotIndex!==null){
+    html += `<div class="empty-hint">Обери культуру для ділянки №${pickerPlotIndex+1}</div>`;
+  }
+  html += `<div class="shop-tabs">`;
+  kinds.forEach(k=>{
+    html += `<div class="tab ${shopTab===k.id?'active':''}" onclick="setShopTab('${k.id}')">${k.label}</div>`;
+  });
+  html += `</div>`;
+
+  const list = Object.entries(CROPS).filter(([id,c])=>c.kind===shopTab);
+  if(list.length===0){ html += `<div class="empty-hint">Немає доступних культур</div>`; }
+  list.forEach(([id,c])=>{
+    const locked = c.tier > idx;
+    const cost = Math.round(c.cost * seedCostMultiplier());
+    const canAfford = state.money >= cost;
+    html += `<div class="card ${locked?'disabled':''}">
+      <div class="icon">${c.emoji}</div>
+      <div class="info">
+        <div class="name">${c.name}</div>
+        <div class="desc">${locked ? `Відкриється на рівні «${TIERS[c.tier].name}»` : `Ріст: ${c.growSec}с · Продаж: ${fmt(c.sell*sellPriceMultiplier(c.kind))}`}</div>
+      </div>
+      <button class="buy-btn" ${locked||!canAfford?'disabled':''} onclick="handlePlantChoice('${id}')">${fmt(cost)}</button>
+    </div>`;
+  });
+  html += `</section>`;
+  document.getElementById("mainView").innerHTML = html;
+}
+function setShopTab(t){ shopTab = t; render(); }
+function handlePlantChoice(cropId){
+  if(pickerPlotIndex !== null){
+    plantCrop(pickerPlotIndex, cropId);
+    pickerPlotIndex = null;
+    currentView = "farm";
+    document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+    document.querySelector('nav button[data-view="farm"]').classList.add("active");
+    render();
+  } else {
+    // find first empty compatible plot
+    const kind = CROPS[cropId].kind;
+    let target = -1;
+    state.plots.forEach((p,i)=>{
+      if(target!==-1 || !p.unlocked || p.crop) return;
+      if(kind==="greenhouse" && p.type!=="greenhouse") return;
+      if(kind!=="greenhouse" && p.type==="greenhouse") return;
+      target = i;
+    });
+    if(target===-1){ showToast("🚫 Немає вільної відповідної ділянки"); return; }
+    plantCrop(target, cropId);
+    currentView="farm";
+    document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+    document.querySelector('nav button[data-view="farm"]').classList.add("active");
+    render();
+  }
+}
+
+function renderBuild(){
+  let html = `<section><div class="sec-title">🏗️ Будівництво теплиць</div>`;
+  const emptyFields = state.plots.filter(p=>p.unlocked && !p.crop && p.type==="field").length;
+  const cost = greenhouseCost();
+  html += `<div class="card">
+    <div class="icon">🏠</div>
+    <div class="info"><div class="name">Нова теплиця</div>
+    <div class="desc">Перетворює вільну польову ділянку на теплицю з контрольованим мікрокліматом. Вільних полів: ${emptyFields}</div></div>
+    <button class="buy-btn" ${emptyFields<1||state.money<cost?'disabled':''} onclick="buildFirstAvailableGreenhouse()">${fmt(cost)}</button>
+  </div>`;
+  html += `</section><section><div class="sec-title">⭐ Модернізація господарства</div>`;
+  UPGRADES.forEach(u=>{
+    const owned = !!state.upgrades[u.id];
+    html += `<div class="card ${owned?'disabled':''}">
+      <div class="icon">${u.emoji}</div>
+      <div class="info"><div class="name">${u.name}</div><div class="desc">${u.desc}</div></div>
+      <button class="buy-btn" ${owned||state.money<u.cost?'disabled':''} onclick="buyUpgrade('${u.id}')">${owned?'✓ Придбано':fmt(u.cost)}</button>
+    </div>`;
+  });
+  html += `</section>`;
+  document.getElementById("mainView").innerHTML = html;
+}
+function buildFirstAvailableGreenhouse(){
+  const i = state.plots.findIndex(p=>p.unlocked && !p.crop && p.type==="field");
+  if(i===-1){ showToast("🚫 Немає вільного поля для будівництва"); return; }
+  buildGreenhouse(i);
+}
+
+function renderWorkers(){
+  let html = `<section><div class="sec-title">👷 Персонал</div>`;
+  WORKER_TYPES.forEach(w=>{
+    const owned = state.workers[w.id]||0;
+    const cost = workerCost(w.id);
+    html += `<div class="card">
+      <div class="icon">${w.emoji}</div>
+      <div class="info"><div class="name">${w.name} (${owned})</div><div class="desc">${w.desc}</div></div>
+      <button class="buy-btn" ${state.money<cost?'disabled':''} onclick="hireWorker('${w.id}')">${fmt(cost)}</button>
+    </div>`;
+  });
+  html += `</section>`;
+  document.getElementById("mainView").innerHTML = html;
+}
+
+function renderStats(){
+  const idx = currentTierIndex();
+  let html = `<section><div class="sec-title">📊 Статистика господарства</div>
+  <div class="stats-grid">
+    <div class="stat-box"><div class="val">${fmt(state.totalEarned)}</div><div class="lbl">Всього зароблено</div></div>
+    <div class="stat-box"><div class="val">${state.stats.harvests}</div><div class="lbl">Зібрано врожаїв</div></div>
+    <div class="stat-box"><div class="val">${state.plots.filter(p=>p.unlocked).length}</div><div class="lbl">Ділянок у власності</div></div>
+    <div class="stat-box"><div class="val">${greenhouseCount()}</div><div class="lbl">Теплиць</div></div>
+    <div class="stat-box"><div class="val">${(state.workers.harvester||0)+(state.workers.agronomist||0)}</div><div class="lbl">Працівників</div></div>
+    <div class="stat-box"><div class="val">${Object.values(state.upgrades).filter(Boolean).length}/${UPGRADES.length}</div><div class="lbl">Модернізацій</div></div>
+  </div></section>
+  <section><div class="sec-title">🏆 Шлях розвитку</div>`;
+  TIERS.forEach((t,i)=>{
+    const reached = i<=idx;
+    html += `<div class="card ${reached?'':'disabled'}">
+      <div class="icon">${t.emoji}</div>
+      <div class="info"><div class="name">${t.name}</div><div class="desc">${reached? 'Досягнуто' : 'Потрібно заробити ' + fmt(t.need)}</div></div>
+    </div>`;
+  });
+  html += `</section>`;
+  document.getElementById("mainView").innerHTML = html;
+}
+
+function render(){
+  renderHeader();
+  if(currentView==="farm") renderFarm();
+  else if(currentView==="shop") renderShop();
+  else if(currentView==="build") renderBuild();
+  else if(currentView==="workers") renderWorkers();
+  else if(currentView==="stats") renderStats();
+}
+
+/* ==================== ЦИКЛ ГРИ ==================== */
+
+setInterval(()=>{
+  if(!state) return;
+  state.lastTick = Date.now();
+  if(currentView==="farm") renderFarm(); // refresh progress bars
+  renderHeader();
+}, 1000);
+
+setInterval(save, 8000);
+document.addEventListener("visibilitychange", ()=>{ if(document.hidden) save(); });
+
+load();
+render();
+</script>
+</body>
+</html>

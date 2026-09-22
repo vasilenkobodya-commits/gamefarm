@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.Agroholding" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:statusBarColor">#152618</item>
+        <item name="android:windowBackground">#0f1a10</item>
+    </style>
+</resources>
